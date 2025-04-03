@@ -164,6 +164,6 @@ end)
 
 -- SettingUI Section
 local SettingMenu = Setting:NewSection("UI Settings")
-Section:NewKeybind("SetButtonUI", "Toggle UI visibility", Enum.KeyCode.F, function()
+SettingMenu:NewKeybind("SetButtonUI", "Toggle UI visibility", Enum.KeyCode.F, function()
 	Library:ToggleUI()
 end)
