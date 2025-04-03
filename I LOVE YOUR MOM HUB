@@ -2,14 +2,105 @@ local Library = loadstring(game:HttpGet("https://raw.githubusercontent.com/xHept
 local Window = Library.CreateLib("I LOVE YOUR MOM X HUB by TrsiL_", "Midnight")
 
 local MainMenu = Window:NewTab("Main")
-local AimbotFOV1 = Window:NewTab("Aimbot")
 local SpeedandJump = Window:NewTab("Speed/Jump")
+local AimbotFOV1 = Window:NewTab("Aimbot")
 local Setting = Window:NewTab("Setting")
 
--- Main Menu: ProximityPrompt Functions
+-- FOV Circle and Aimbot Logic
+local fov = 100
 local aimbotActive = false
-local currentFOV = 100
+local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
+local Players = game:GetService("Players")
+local Cam = workspace.CurrentCamera
 
+local FOVring = Drawing.new("Circle")
+FOVring.Visible = false
+FOVring.Thickness = 2
+FOVring.Color = Color3.fromRGB(128, 0, 128) -- Purple color
+FOVring.Filled = false
+FOVring.Radius = fov
+FOVring.Position = Cam.ViewportSize / 2
+
+local function updateDrawings()
+    local camViewportSize = Cam.ViewportSize
+    FOVring.Position = camViewportSize / 2
+end
+
+local function lookAt(target)
+    local lookVector = (target - Cam.CFrame.Position).unit
+    local newCFrame = CFrame.new(Cam.CFrame.Position, Cam.CFrame.Position + lookVector)
+    Cam.CFrame = newCFrame
+end
+
+local function getClosestPlayerInFOV(trg_part)
+    local nearest = nil
+    local last = math.huge
+    local playerMousePos = Cam.ViewportSize / 2
+
+    for _, player in ipairs(Players:GetPlayers()) do
+        if player ~= Players.LocalPlayer then
+            local part = player.Character and player.Character:FindFirstChild(trg_part)
+            if part then
+                local ePos, isVisible = Cam:WorldToViewportPoint(part.Position)
+                local distance = (Vector2.new(ePos.x, ePos.y) - playerMousePos).Magnitude
+
+                if distance < last and isVisible and distance < fov then
+                    last = distance
+                    nearest = player
+                end
+            end
+        end
+    end
+
+    return nearest
+end
+
+-- Aimbot UI Section
+local Aimbotplayer = AimbotFOV1:NewSection("Aimbot Settings")
+
+Aimbotplayer:NewSlider("AimBotFOV", "Adjust AimBot FOV", 200, 30, function(s)
+    fov = s
+    FOVring.Radius = fov
+end)
+
+Aimbotplayer:NewButton("OpenAimBot", "Activate Aimbot", function()
+    aimbotActive = true
+    FOVring.Visible = true
+end)
+
+Aimbotplayer:NewButton("CloseAimBot", "Deactivate Aimbot", function()
+    aimbotActive = false
+    FOVring.Visible = false
+end)
+
+-- Keybind to toggle Aimbot
+local function onKeyDown(input)
+    if input.KeyCode == Enum.KeyCode.Delete then
+        if aimbotActive then
+            aimbotActive = false
+            FOVring.Visible = false
+        else
+            aimbotActive = true
+            FOVring.Visible = true
+        end
+    end
+end
+
+UserInputService.InputBegan:Connect(onKeyDown)
+
+-- Only start checking closest player if Aimbot is active
+RunService.RenderStepped:Connect(function()
+    if aimbotActive then
+        updateDrawings()
+        local closest = getClosestPlayerInFOV("Head")
+        if closest and closest.Character:FindFirstChild("Head") then
+            lookAt(closest.Character.Head.Position)
+        end
+    end
+end)
+
+-- Main Menu: ProximityPrompt Functions
 local MainSection = MainMenu:NewSection("ProximityPrompt Functions")
 
 MainSection:NewButton("NoCooldown", "Remove cooldown for ProximityPrompt", function()
@@ -23,6 +114,7 @@ MainSection:NewButton("NoCooldown", "Remove cooldown for ProximityPrompt", funct
     end
 end)
 
+-- Noclip Section
 local Noclip = MainMenu:NewSection("Player Noclip")
 local noclipActive = false
 local runservice = game:GetService("RunService")
@@ -63,139 +155,15 @@ Power:NewSlider("WalkSpeed", "Adjust WalkSpeed", 100, 10, function(s)
     end
 end)
 
-Power:NewSlider("JumpPower", "Adjust JumpPower", 300, 10, function(s)
+Power:NewSlider("JumpPower", "Adjust JumpPower", 500, 30, function(s)
     local player = game.Players.LocalPlayer
     if player and player.Character and player.Character:FindFirstChild("Humanoid") then
         player.Character.Humanoid.JumpPower = s
     end
 end)
 
--- Aimbot and ESP Section
-local Aimbotplayer = AimbotFOV1:NewSection("Aimbot Settings")
-
-local FOVring = Drawing.new("Circle")
-FOVring.Visible = true
-FOVring.Thickness = 2
-FOVring.Color = Color3.fromRGB(128, 0, 128)
-FOVring.Filled = false
-
-Aimbotplayer:NewSlider("AimBotFOV", "Adjust AimBot FOV", 300, 100, function(s)
-    currentFOV = s
-    local Cam = workspace.CurrentCamera
-
-    FOVring.Radius = currentFOV
-    FOVring.Position = Cam.ViewportSize / 2
-
-    local function updateDrawings()
-        FOVring.Radius = currentFOV
-        FOVring.Position = Cam.ViewportSize / 2
-    end
-
-    local function lookAt(target)
-        local lookVector = (target - Cam.CFrame.Position).unit
-        Cam.CFrame = CFrame.new(Cam.CFrame.Position, Cam.CFrame.Position + lookVector)
-    end
-
-    local function getClosestPlayerInFOV()
-        local nearest, lastDist = nil, math.huge
-        local playerMousePos = Cam.ViewportSize / 2
-
-        for _, player in ipairs(game:GetService("Players"):GetPlayers()) do
-            if player ~= game.Players.LocalPlayer then
-                local part = player.Character and player.Character:FindFirstChild("Head")
-                if part then
-                    local screenPos, onScreen = Cam:WorldToViewportPoint(part.Position)
-                    local distance = (Vector2.new(screenPos.X, screenPos.Y) - playerMousePos).Magnitude
-                    if onScreen and distance < lastDist and distance < currentFOV then
-                        lastDist = distance
-                        nearest = player
-                    end
-                end
-            end
-        end
-        return nearest
-    end
-
-    if aimbotActive then
-        RunService.RenderStepped:Connect(function()
-            updateDrawings()
-            local closest = getClosestPlayerInFOV()
-            if closest and closest.Character and closest.Character:FindFirstChild("Head") then
-                lookAt(closest.Character.Head.Position)
-            end
-        end)
-    end
-end)
-
-Aimbotplayer:NewButton("CloseAimBot", "Remove Aimbot", function()
-    aimbotActive = false
-    FOVring.Visible = false
-end)
-
-Aimbotplayer:NewButton("OpenAimBot", "Activate Aimbot", function()
-    aimbotActive = true
-    FOVring.Visible = true
-end)
-
--- กำหนดตัวแปรสำหรับ ESP
-local Players = game:GetService("Players"):GetChildren()
-local RunService = game:GetService("RunService")
-local highlight = Instance.new("Highlight")
-highlight.Name = "Highlight"
-local activeHighlights = {}
-
-local function getCharacter(player)
-    return workspace:FindFirstChild(player.Name)
-end
-
-local function createHighlight(player)
-    repeat wait() until getCharacter(player)
-    if not getCharacter(player):FindFirstChild("HumanoidRootPart"):FindFirstChild("Highlight") then
-        local highlightClone = highlight:Clone()
-        highlightClone.Adornee = getCharacter(player)
-        highlightClone.Parent = getCharacter(player):FindFirstChild("HumanoidRootPart")
-        highlightClone.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
-        highlightClone.Name = "Highlight"
-        activeHighlights[player] = highlightClone
-    end
-end
-
-local function removeHighlight(player)
-    local character = getCharacter(player)
-    if character and character:FindFirstChild("HumanoidRootPart") then
-        local highlightToRemove = character.HumanoidRootPart:FindFirstChild("Highlight")
-        if highlightToRemove then
-            highlightToRemove:Destroy()
-        end
-        activeHighlights[player] = nil
-    end
-end
-
-local function openESP()
-    for i, v in pairs(Players) do
-        createHighlight(v)
-    end
-end
-
-local function closeESP()
-    for i, v in pairs(Players) do
-        removeHighlight(v)
-    end
-end
-
--- ปุ่มสำหรับ ESP
-local ESPplayers = AimbotFOV1:NewSection("ESP")
-
-ESPplayers:NewButton("OpenESP", "Activate ESP", function()
-    openESP()
-end)
-
-ESPplayers:NewButton("CloseESP", "Deactivate ESP", function()
-    closeESP()
-end)
-
 -- SettingUI Section
 local SettingMenu = Setting:NewSection("UI Settings")
-SettingMenu:NewKeybind("SetButtonUI", "Toggle UI visibility", Enum.KeyCode.U, function()
-    Library:ToggleUI()
+Section:NewKeybind("SetButtonUI", "Toggle UI visibility", Enum.KeyCode.F, function()
+	Library:ToggleUI()
 end)
