@@ -145,6 +145,11 @@ Noclip:NewButton("CloseNoclip", "Deactivate Noclip", function()
     end
 end)
 
+local Admin = MainMenu:NewSection("Admin Menu")
+Admin:NewButton("Infinite yield", "Activate Infinite yield", function()
+       loadstring(game:HttpGet("https://raw.githubusercontent.com/EdgeIY/infiniteyield/master/source"))()
+end)
+
 -- WalkSpeed and JumpPower Section
 local Power = SpeedandJump:NewSection("WalkSpeed and JumpPower")
 
